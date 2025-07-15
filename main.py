@@ -1,6 +1,8 @@
 import json
 import os
 from datetime import date, datetime
+import matplotlib
+matplotlib.use('Agg')  # Fuerza un backend compatible con Kivy
 import matplotlib.pyplot as plt
 from kivy.garden.matplotlib.backend_kivyagg import FigureCanvasKivyAgg as FCK
 from kivy.app import App
@@ -11,21 +13,12 @@ from kivy.uix.button import Button
 from kivy.uix.screenmanager import ScreenManager, Screen
 from kivy.uix.spinner import Spinner
 from kivy.uix.scrollview import ScrollView
-from kivy.uix.scrollview import ScrollView
 from kivy.uix.image import Image
-import matplotlib
-matplotlib.use('Agg')  # Fuerza un backend compatible con Kivy
-import matplotlib.pyplot as plt
-from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.button import Button
-from kivy.uix.label import Label
-from kivy.uix.screenmanager import Screen
 from kivy.core.window import Window
 import io
 from PIL import Image as PILImage
 from kivy.core.image import Image as CoreImage
 import base64
-from kivy.uix.image import Image
 
 
 
