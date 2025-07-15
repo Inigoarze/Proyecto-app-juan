@@ -1,0 +1,94 @@
+{
+    "a": {
+        "usuario": "a",
+        "password": "a",
+        "nombre": "a",
+        "edad": "a",
+        "peso": "a",
+        "objetivo": "a",
+        "actividad": "a",
+        "restricciones": "a",
+        "rutinas_publicadas": [],
+        "dietas_publicadas": [],
+        "progreso": [
+            {
+                "fecha": "2025-07-15",
+                "peso": 321.0,
+                "comentario": "",
+                "likes": [
+                    "i"
+                ]
+            },
+            {
+                "fecha": "2025-07-15",
+                "peso": 32.0,
+                "comentario": "",
+                "likes": []
+            },
+            {
+                "fecha": "2025-07-15",
+                "peso": 12.0,
+                "comentario": "",
+                "likes": []
+            },
+            {
+                "fecha": "2025-07-15",
+                "peso": 15.0,
+                "comentario": "seguro",
+                "likes": []
+            }
+        ],
+        "seguidores": [
+            "i"
+        ],
+        "seguidos": [
+            "i"
+        ]
+    },
+    "i": {
+        "usuario": "i",
+        "password": "i",
+        "nombre": "i",
+        "edad": "22",
+        "peso": "34",
+        "objetivo": "ganar masa",
+        "actividad": "activo",
+        "restricciones": "Gluten",
+        "rutinas_publicadas": [],
+        "dietas_publicadas": [
+            "dieta_1"
+        ],
+        "progreso": [
+            {
+                "fecha": "2025-07-15",
+                "peso": 120.0,
+                "comentario": "facil",
+                "likes": [
+                    "a"
+                ]
+            }
+        ],
+        "seguidores": [
+            "a"
+        ],
+        "seguidos": [
+            "a"
+        ]
+    },
+    "mama": {
+        "usuario": "mama",
+        "password": "mama",
+        "nombre": "mama",
+        "edad": "47",
+        "peso": "47",
+        "objetivo": "ganar musculo",
+        "actividad": "activo",
+        "restricciones": "vegetariana",
+        "rutinas_publicadas": [],
+        "dietas_publicadas": [],
+        "progreso": [],
+        "seguidores": [],
+        "seguidos": [],
+        "notificaciones": []
+    }
+}

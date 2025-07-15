@@ -1,0 +1,15 @@
+{
+    "dieta_1": {
+        "creador": "i",
+        "titulo": "Maxocargo",
+        "descripcion": "mantequilla de mani con mani tostao",
+        "comidas": [
+            "Mani tostao con mantequilla",
+            "mani con tostao",
+            "tostao con mani tostao"
+        ],
+        "calificaciones": [],
+        "suscripciones": [],
+        "reacciones": {}
+    }
+}

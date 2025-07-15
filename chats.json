@@ -1,0 +1,31 @@
+{
+    "a|mama": [
+        {
+            "emisor": "mama",
+            "texto": "hola",
+            "fecha": "2025-07-15 18:24"
+        },
+        {
+            "emisor": "mama",
+            "texto": "hola",
+            "fecha": "2025-07-15 18:27"
+        },
+        {
+            "emisor": "mama",
+            "texto": "alo",
+            "fecha": "2025-07-15 18:29"
+        },
+        {
+            "emisor": "a",
+            "texto": "hola",
+            "fecha": "2025-07-15 18:32"
+        }
+    ],
+    "a|mm": [
+        {
+            "emisor": "a",
+            "texto": "hola",
+            "fecha": "2025-07-15 18:31"
+        }
+    ]
+}
