@@ -104,7 +104,7 @@ def agregar_notificacion(usuario, texto, tipo="general"):
         users[usuario]["notificaciones"].append({
             "tipo": tipo,
             "texto": texto,
-            "fecha": datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+            "fecha": datetime.now().strftime("%Y-%m-%d %H:%M")
         })
         save_users(users)
 
@@ -642,7 +642,7 @@ class RegisterScreen(Screen):
             users[usuario]["notificaciones"].append({
                 "tipo": tipo,
                 "texto": texto,
-                "fecha": datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+                "fecha": datetime.now().strftime("%Y-%m-%d %H:%M")
             })
             save_users(users)
 
@@ -1181,7 +1181,7 @@ class DetalleRutinaScreen(Screen):
         rutina["comentarios"].append({
             "usuario": self.manager.current_user,
             "texto": texto,
-            "fecha": datetime.date.today().isoformat()
+            "fecha": date.today().isoformat()
         })
         save_rutinas(rutinas)
 
