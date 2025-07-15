@@ -1,8 +1,13 @@
 import json
 import os
 from datetime import date, datetime
+import io
+
+import matplotlib
+matplotlib.use("Agg")  # Backend compatible con Kivy
 import matplotlib.pyplot as plt
-from kivy.garden.matplotlib.backend_kivyagg import FigureCanvasKivyAgg as FCK
+
+from PIL import Image as PILImage
 from kivy.app import App
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.label import Label
@@ -11,21 +16,8 @@ from kivy.uix.button import Button
 from kivy.uix.screenmanager import ScreenManager, Screen
 from kivy.uix.spinner import Spinner
 from kivy.uix.scrollview import ScrollView
-from kivy.uix.scrollview import ScrollView
 from kivy.uix.image import Image
-import matplotlib
-matplotlib.use('Agg')  # Fuerza un backend compatible con Kivy
-import matplotlib.pyplot as plt
-from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.button import Button
-from kivy.uix.label import Label
-from kivy.uix.screenmanager import Screen
-from kivy.core.window import Window
-import io
-from PIL import Image as PILImage
 from kivy.core.image import Image as CoreImage
-import base64
-from kivy.uix.image import Image
 
 
 
@@ -36,66 +28,56 @@ DIETAS_FILE = "dietas.json"
 CHATS_FILE = "chats.json"
 
 
+def load_json(path):
+    if os.path.exists(path):
+        with open(path, "r") as f:
+            return json.load(f)
+    return {}
+
+
+def save_json(path, data):
+    with open(path, "w") as f:
+        json.dump(data, f, indent=4)
+
 
 def load_progreso():
-    if os.path.exists(PROGRESO_FILE):
-        with open(PROGRESO_FILE, "r") as f:
-            return json.load(f)
-    return {}
+    return load_json(PROGRESO_FILE)
 
 def save_progreso(data):
-    with open(PROGRESO_FILE, "w") as f:
-        json.dump(data, f, indent=4)
+    save_json(PROGRESO_FILE, data)
 
 def load_chats():
-    if os.path.exists(CHATS_FILE):
-        with open(CHATS_FILE, "r") as f:
-            return json.load(f)
-    return {}
+    return load_json(CHATS_FILE)
 
 def save_chats(data):
-    with open(CHATS_FILE, "w") as f:
-        json.dump(data, f, indent=4)
+    save_json(CHATS_FILE, data)
 
 def load_users():
-    if os.path.exists(DATA_FILE):
-        with open(DATA_FILE, "r") as f:
-            users = json.load(f)
-            # Asegura que todos los campos existan
-            for u in users.values():
-                u.setdefault("rutinas_publicadas", [])
-                u.setdefault("dietas_publicadas", [])
-                u.setdefault("progreso", [])
-                u.setdefault("seguidores", [])
-                u.setdefault("seguidos", [])
-            return users
-    return {}
+    users = load_json(DATA_FILE)
+    for u in users.values():
+        u.setdefault("rutinas_publicadas", [])
+        u.setdefault("dietas_publicadas", [])
+        u.setdefault("progreso", [])
+        u.setdefault("seguidores", [])
+        u.setdefault("seguidos", [])
+    return users
 
 
 def save_users(data):
-    with open(DATA_FILE, "w") as f:
-        json.dump(data, f, indent=4)
+    save_json(DATA_FILE, data)
 
 def load_dietas():
-    if os.path.exists(DIETAS_FILE):
-        with open(DIETAS_FILE, "r") as f:
-            return json.load(f)
-    return {}
+    return load_json(DIETAS_FILE)
 
 def save_dietas(data):
-    with open(DIETAS_FILE, "w") as f:
-        json.dump(data, f, indent=4)
+    save_json(DIETAS_FILE, data)
     
 
 def load_rutinas():
-    if os.path.exists(RUTINAS_FILE):
-        with open(RUTINAS_FILE, "r") as f:
-            return json.load(f)
-    return {}
+    return load_json(RUTINAS_FILE)
 
 def save_rutinas(data):
-    with open(RUTINAS_FILE, "w") as f:
-        json.dump(data, f, indent=4)
+    save_json(RUTINAS_FILE, data)
 
 def agregar_notificacion(usuario, texto, tipo="general"):
     users = load_users()
@@ -104,7 +86,7 @@ def agregar_notificacion(usuario, texto, tipo="general"):
         users[usuario]["notificaciones"].append({
             "tipo": tipo,
             "texto": texto,
-            "fecha": datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+            "fecha": datetime.now().strftime("%Y-%m-%d %H:%M")
         })
         save_users(users)
 
@@ -635,18 +617,6 @@ class RegisterScreen(Screen):
         self.manager.current_user = usuario
         self.manager.current = "inicio"
     
-    def agregar_notificacion(usuario, texto, tipo="general"):
-        users = load_users()
-        if usuario in users:
-            users[usuario].setdefault("notificaciones", [])
-            users[usuario]["notificaciones"].append({
-                "tipo": tipo,
-                "texto": texto,
-                "fecha": datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
-            })
-            save_users(users)
-
-
 class VerPerfilAjenoScreen(Screen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
