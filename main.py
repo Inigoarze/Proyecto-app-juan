@@ -15,6 +15,7 @@ from kivy.uix.spinner import Spinner
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.image import Image
 from kivy.core.window import Window
+from kivy.lang import Builder
 import io
 from PIL import Image as PILImage
 from kivy.core.image import Image as CoreImage
@@ -27,6 +28,11 @@ RUTINAS_FILE = "rutinas.json"
 PROGRESO_FILE = "progreso.json"
 DIETAS_FILE = "dietas.json"
 CHATS_FILE = "chats.json"
+
+# Carga estilos globales y configura color de fondo
+Builder.load_file("style.kv")
+Window.clearcolor = (0.98, 0.98, 0.98, 1)
+Window.size = (400, 700)
 
 
 
