@@ -30,65 +30,63 @@ CHATS_FILE = "chats.json"
 
 
 
-def load_progreso():
-    if os.path.exists(PROGRESO_FILE):
-        with open(PROGRESO_FILE, "r") as f:
+def load_json(path):
+    if os.path.exists(path):
+        with open(path, "r") as f:
             return json.load(f)
     return {}
+
+
+def save_json(path, data):
+    with open(path, "w") as f:
+        json.dump(data, f, indent=4)
+
+
+def load_progreso():
+    return load_json(PROGRESO_FILE)
+
 
 def save_progreso(data):
-    with open(PROGRESO_FILE, "w") as f:
-        json.dump(data, f, indent=4)
+    save_json(PROGRESO_FILE, data)
+
 
 def load_chats():
-    if os.path.exists(CHATS_FILE):
-        with open(CHATS_FILE, "r") as f:
-            return json.load(f)
-    return {}
+    return load_json(CHATS_FILE)
+
 
 def save_chats(data):
-    with open(CHATS_FILE, "w") as f:
-        json.dump(data, f, indent=4)
+    save_json(CHATS_FILE, data)
+
 
 def load_users():
-    if os.path.exists(DATA_FILE):
-        with open(DATA_FILE, "r") as f:
-            users = json.load(f)
-            # Asegura que todos los campos existan
-            for u in users.values():
-                u.setdefault("rutinas_publicadas", [])
-                u.setdefault("dietas_publicadas", [])
-                u.setdefault("progreso", [])
-                u.setdefault("seguidores", [])
-                u.setdefault("seguidos", [])
-            return users
-    return {}
+    users = load_json(DATA_FILE)
+    for u in users.values():
+        u.setdefault("rutinas_publicadas", [])
+        u.setdefault("dietas_publicadas", [])
+        u.setdefault("progreso", [])
+        u.setdefault("seguidores", [])
+        u.setdefault("seguidos", [])
+    return users
 
 
 def save_users(data):
-    with open(DATA_FILE, "w") as f:
-        json.dump(data, f, indent=4)
+    save_json(DATA_FILE, data)
+
 
 def load_dietas():
-    if os.path.exists(DIETAS_FILE):
-        with open(DIETAS_FILE, "r") as f:
-            return json.load(f)
-    return {}
+    return load_json(DIETAS_FILE)
+
 
 def save_dietas(data):
-    with open(DIETAS_FILE, "w") as f:
-        json.dump(data, f, indent=4)
-    
+    save_json(DIETAS_FILE, data)
+
 
 def load_rutinas():
-    if os.path.exists(RUTINAS_FILE):
-        with open(RUTINAS_FILE, "r") as f:
-            return json.load(f)
-    return {}
+    return load_json(RUTINAS_FILE)
+
 
 def save_rutinas(data):
-    with open(RUTINAS_FILE, "w") as f:
-        json.dump(data, f, indent=4)
+    save_json(RUTINAS_FILE, data)
 
 def agregar_notificacion(usuario, texto, tipo="general"):
     users = load_users()
@@ -627,17 +625,6 @@ class RegisterScreen(Screen):
         save_users(users)
         self.manager.current_user = usuario
         self.manager.current = "inicio"
-    
-    def agregar_notificacion(usuario, texto, tipo="general"):
-        users = load_users()
-        if usuario in users:
-            users[usuario].setdefault("notificaciones", [])
-            users[usuario]["notificaciones"].append({
-                "tipo": tipo,
-                "texto": texto,
-                "fecha": datetime.now().strftime("%Y-%m-%d %H:%M")
-            })
-            save_users(users)
 
 
 class VerPerfilAjenoScreen(Screen):
