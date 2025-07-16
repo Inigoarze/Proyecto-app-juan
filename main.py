@@ -886,14 +886,23 @@ class PublicarDietaScreen(Screen):
         ingr = [i.strip().lower() for i in self.ingredientes.text.strip().split("\n") if i.strip()]
         pasos = [p.strip() for p in self.pasos.text.strip().split("\n") if p.strip()]
         ing_data = load_ingredientes()
-        total_cal = sum(ing_data.get(i, {}).get("calorias", 0) for i in ingr)
+        total_nutri = {
+            "calorias": 0,
+            "proteinas": 0,
+            "carbohidratos": 0,
+            "grasas": 0
+        }
+        for i in ingr:
+            info = ing_data.get(i, {})
+            for k in total_nutri:
+                total_nutri[k] += info.get(k, 0)
         dieta = {
             "creador": self.manager.current_user,
             "titulo": self.titulo.text,
             "descripcion": self.descripcion.text,
             "ingredientes": ingr,
             "pasos": pasos,
-            "valor_nutricional": total_cal,
+            "valor_nutricional": total_nutri,
             "calificaciones": [],
             "suscripciones": [],
             "reacciones": {},
@@ -927,8 +936,16 @@ class VerDietasScreen(Screen):
 
         for did, dieta in dietas.items():
             promedio = round(sum(dieta['calificaciones'])/len(dieta['calificaciones']), 1) if dieta['calificaciones'] else 0
-            kcal = dieta.get('valor_nutricional', 0)
-            info = f"{dieta['titulo']} - {dieta['descripcion']}\nKcal: {kcal}, Suscriptores: {len(dieta['suscripciones'])}, Calificación: {promedio}/5"
+            nutri = dieta.get('valor_nutricional', {})
+            kcal = nutri.get('calorias', 0)
+            p = nutri.get('proteinas', 0)
+            c = nutri.get('carbohidratos', 0)
+            g = nutri.get('grasas', 0)
+            info = (
+                f"{dieta['titulo']} - {dieta['descripcion']}\n"
+                f"Kcal: {kcal}, P: {p}g C: {c}g G: {g}g, "
+                f"Suscriptores: {len(dieta['suscripciones'])}, Calificación: {promedio}/5"
+            )
             btn = Button(text=info)
             btn.bind(on_press=lambda x, id=did: self.ver_dieta(id))
             self.layout.add_widget(btn)
@@ -958,8 +975,16 @@ class DietasSuscritasScreen(Screen):
             if not dieta:
                 continue
             promedio = round(sum(dieta['calificaciones'])/len(dieta['calificaciones']),1) if dieta['calificaciones'] else 0
-            kcal = dieta.get('valor_nutricional', 0)
-            info = f"{dieta['titulo']} - {dieta['descripcion']}\nKcal: {kcal}, Suscriptores: {len(dieta['suscripciones'])}, Calificación: {promedio}/5"
+            nutri = dieta.get('valor_nutricional', {})
+            kcal = nutri.get('calorias', 0)
+            p = nutri.get('proteinas', 0)
+            c = nutri.get('carbohidratos', 0)
+            g = nutri.get('grasas', 0)
+            info = (
+                f"{dieta['titulo']} - {dieta['descripcion']}\n"
+                f"Kcal: {kcal}, P: {p}g C: {c}g G: {g}g, "
+                f"Suscriptores: {len(dieta['suscripciones'])}, Calificación: {promedio}/5"
+            )
             btn = Button(text=info)
             btn.bind(on_press=lambda x, id=did: self.ver_dieta(id))
             self.layout.add_widget(btn)
@@ -984,14 +1009,27 @@ class LibreriaIngredientesScreen(Screen):
 
         datos = load_ingredientes()
         for nombre, val in datos.items():
-            self.layout.add_widget(Label(text=f"{nombre}: {val.get('calorias',0)} kcal"))
+            texto = (
+                f"{nombre}: {val.get('calorias',0)} kcal, "
+                f"P: {val.get('proteinas',0)}g C: {val.get('carbohidratos',0)}g "
+                f"G: {val.get('grasas',0)}g"
+            )
+            self.layout.add_widget(Label(text=texto))
 
         self.nombre = TextInput(hint_text="Nombre", multiline=False)
         self.calorias = TextInput(hint_text="Calorías", multiline=False, input_filter='float')
+        self.proteinas = TextInput(hint_text="Proteínas", multiline=False, input_filter='float')
+        self.carbs = TextInput(hint_text="Carbohidratos", multiline=False, input_filter='float')
+        self.grasas = TextInput(hint_text="Grasas", multiline=False, input_filter='float')
+
         btn_add = Button(text="Agregar/Actualizar")
         btn_add.bind(on_press=self.agregar)
+
         self.layout.add_widget(self.nombre)
         self.layout.add_widget(self.calorias)
+        self.layout.add_widget(self.proteinas)
+        self.layout.add_widget(self.carbs)
+        self.layout.add_widget(self.grasas)
         self.layout.add_widget(btn_add)
 
         btn_back = Button(text="Volver")
@@ -1001,13 +1039,24 @@ class LibreriaIngredientesScreen(Screen):
     def agregar(self, instance):
         nombre = self.nombre.text.strip().lower()
         cal = self.calorias.text.strip()
+        pro = self.proteinas.text.strip()
+        carb = self.carbs.text.strip()
+        gra = self.grasas.text.strip()
         if not nombre or not cal:
             return
         data = load_ingredientes()
-        data[nombre] = {"calorias": float(cal)}
+        data[nombre] = {
+            "calorias": float(cal),
+            "proteinas": float(pro) if pro else 0,
+            "carbohidratos": float(carb) if carb else 0,
+            "grasas": float(gra) if gra else 0
+        }
         save_ingredientes(data)
         self.nombre.text = ""
         self.calorias.text = ""
+        self.proteinas.text = ""
+        self.carbs.text = ""
+        self.grasas.text = ""
         self.on_enter()
 
 class DetalleDietaScreen(Screen):
@@ -1081,7 +1130,12 @@ class DetalleDietaScreen(Screen):
             info.append("\nIngredientes:")
             info.extend(dieta.get('ingredientes', []))
         if 'valor_nutricional' in dieta:
-            info.append(f"Valor nutricional: {dieta['valor_nutricional']} kcal")
+            vn = dieta['valor_nutricional']
+            info.append(
+                f"Valor nutricional: {vn.get('calorias',0)} kcal, "
+                f"P: {vn.get('proteinas',0)}g C: {vn.get('carbohidratos',0)}g "
+                f"G: {vn.get('grasas',0)}g"
+            )
         if dieta.get('pasos'):
             info.append("\nPasos:")
             info.extend(dieta.get('pasos', []))
