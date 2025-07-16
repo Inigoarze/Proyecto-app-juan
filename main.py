@@ -30,6 +30,33 @@ DIETAS_FILE = "dietas.json"
 CHATS_FILE = "chats.json"
 INGREDIENTES_FILE = "ingredientes.json"
 
+# Opciones predeterminadas
+OBJETIVOS_OPTIONS = [
+    "Ganar masa muscular",
+    "Perder peso",
+    "Mantener peso"
+]
+ACTIVIDAD_OPTIONS = [
+    "Sedentario",
+    "Activo",
+    "Muy activo"
+]
+RESTRICCIONES_OPTIONS = [
+    "Ninguna",
+    "Sin gluten",
+    "Vegetariano",
+    "Vegano"
+]
+DIAS_SEMANA = [
+    "Lunes",
+    "Martes",
+    "Miércoles",
+    "Jueves",
+    "Viernes",
+    "Sábado",
+    "Domingo"
+]
+
 # Carga estilos globales y configura color de fondo
 Builder.load_file("style.kv")
 Window.clearcolor = (0.98, 0.98, 0.98, 1)
@@ -609,16 +636,20 @@ class RegisterScreen(Screen):
             ("Contraseña", "password"),
             ("Nombre completo", "nombre"),
             ("Edad", "edad"),
-            ("Peso (kg)", "peso"),
-            ("Objetivo", "objetivo"),
-            ("Nivel de actividad física", "actividad"),
-            ("Restricciones alimenticias", "restricciones")
+            ("Peso (kg)", "peso")
         ]
 
         for label, key in campos:
             ti = TextInput(hint_text=label, multiline=False, password=(key == "password"))
             self.inputs[key] = ti
             layout.add_widget(ti)
+
+        self.objetivo = Spinner(text="Objetivo", values=OBJETIVOS_OPTIONS)
+        self.actividad = Spinner(text="Nivel de actividad", values=ACTIVIDAD_OPTIONS)
+        self.restricciones = Spinner(text="Restricciones alimenticias", values=RESTRICCIONES_OPTIONS)
+        layout.add_widget(self.objetivo)
+        layout.add_widget(self.actividad)
+        layout.add_widget(self.restricciones)
 
         self.msg = Label(text="", color=(1, 0, 0, 1))
         layout.add_widget(self.msg)
@@ -635,11 +666,20 @@ class RegisterScreen(Screen):
 
     def registrar(self, instance):
         data = {k: v.text for k, v in self.inputs.items()}
+        data["objetivo"] = self.objetivo.text
+        data["actividad"] = self.actividad.text
+        data["restricciones"] = self.restricciones.text
         usuario = data["usuario"]
         clave = data["password"]
 
-        if not usuario or not clave:
-            self.msg.text = "Usuario y contraseña son obligatorios"
+        if (
+            not usuario
+            or not clave
+            or self.objetivo.text == "Objetivo"
+            or self.actividad.text == "Nivel de actividad"
+            or self.restricciones.text == "Restricciones alimenticias"
+        ):
+            self.msg.text = "Completa todos los campos"
             return
 
         users = load_users()
@@ -860,6 +900,8 @@ class PublicarDietaScreen(Screen):
         self.descripcion = TextInput(hint_text="Descripción", multiline=False)
         self.ingredientes = TextInput(hint_text="Ingredientes (uno por línea)", multiline=True)
         self.pasos = TextInput(hint_text="Pasos de preparación (uno por línea)", multiline=True)
+        self.objetivo = Spinner(text="Objetivo", values=OBJETIVOS_OPTIONS)
+        self.restricciones = Spinner(text="Restricciones", values=RESTRICCIONES_OPTIONS)
         self.msg = Label(text="")
 
         layout = BoxLayout(orientation="vertical", spacing=10, padding=20)
@@ -868,6 +910,8 @@ class PublicarDietaScreen(Screen):
         layout.add_widget(self.descripcion)
         layout.add_widget(self.ingredientes)
         layout.add_widget(self.pasos)
+        layout.add_widget(self.objetivo)
+        layout.add_widget(self.restricciones)
         layout.add_widget(self.msg)
 
         btn_publicar = Button(text="Publicar")
@@ -881,6 +925,15 @@ class PublicarDietaScreen(Screen):
         self.add_widget(layout)
 
     def publicar(self, instance):
+        if (
+            not self.titulo.text
+            or not self.descripcion.text
+            or self.objetivo.text == "Objetivo"
+            or self.restricciones.text == "Restricciones"
+        ):
+            self.msg.text = "Completa todos los campos"
+            return
+
         dietas = load_dietas()
         nueva_id = f"dieta_{len(dietas)+1}"
         ingr = [i.strip().lower() for i in self.ingredientes.text.strip().split("\n") if i.strip()]
@@ -902,6 +955,8 @@ class PublicarDietaScreen(Screen):
             "descripcion": self.descripcion.text,
             "ingredientes": ingr,
             "pasos": pasos,
+            "objetivo": self.objetivo.text,
+            "restricciones": self.restricciones.text,
             "valor_nutricional": total_nutri,
             "calificaciones": [],
             "suscripciones": [],
@@ -933,8 +988,15 @@ class VerDietasScreen(Screen):
         self.layout.clear_widgets()
         self.layout.add_widget(Label(text="Dietas Disponibles"))
         dietas = load_dietas()
+        user = load_users().get(self.manager.current_user, {})
+        obj = user.get("objetivo")
+        restric = user.get("restricciones")
 
         for did, dieta in dietas.items():
+            if dieta.get("objetivo") and obj and dieta.get("objetivo") != obj:
+                continue
+            if dieta.get("restricciones") and restric and dieta.get("restricciones") not in ("Ninguna", restric):
+                continue
             promedio = round(sum(dieta['calificaciones'])/len(dieta['calificaciones']), 1) if dieta['calificaciones'] else 0
             nutri = dieta.get('valor_nutricional', {})
             kcal = nutri.get('calorias', 0)
@@ -1216,6 +1278,9 @@ class PublicarRutinaScreen(Screen):
         self.titulo = TextInput(hint_text="Título de la rutina", multiline=False)
         self.descripcion = TextInput(hint_text="Descripción", multiline=False)
         self.ejercicios = TextInput(hint_text="Ejercicios (separados por coma)", multiline=False)
+        self.dia = Spinner(text="Día de la semana", values=DIAS_SEMANA)
+        self.objetivo = Spinner(text="Objetivo", values=OBJETIVOS_OPTIONS)
+        self.grupos = TextInput(hint_text="Grupos musculares", multiline=False)
         self.msg = Label(text="")
 
         layout = BoxLayout(orientation="vertical", spacing=10, padding=20)
@@ -1223,6 +1288,9 @@ class PublicarRutinaScreen(Screen):
         layout.add_widget(self.titulo)
         layout.add_widget(self.descripcion)
         layout.add_widget(self.ejercicios)
+        layout.add_widget(self.dia)
+        layout.add_widget(self.objetivo)
+        layout.add_widget(self.grupos)
         layout.add_widget(self.msg)
 
         btn_publicar = Button(text="Publicar")
@@ -1236,18 +1304,30 @@ class PublicarRutinaScreen(Screen):
         self.add_widget(layout)
 
     def publicar(self, instance):
+        if (
+            not self.titulo.text
+            or not self.descripcion.text
+            or self.dia.text == "Día de la semana"
+            or self.objetivo.text == "Objetivo"
+        ):
+            self.msg.text = "Completa todos los campos"
+            return
+
         rutinas = load_rutinas()
         nueva_id = f"rutina_{len(rutinas)+1}"
         rutina = {
-    "creador": self.manager.current_user,
-    "titulo": self.titulo.text,
-    "descripcion": self.descripcion.text,
-    "ejercicios": [e.strip() for e in self.ejercicios.text.split(",")],
-    "calificaciones": [],
-    "suscripciones": [],
-    "reacciones": {},
-    "comentarios": []
-}
+            "creador": self.manager.current_user,
+            "titulo": self.titulo.text,
+            "descripcion": self.descripcion.text,
+            "ejercicios": [e.strip() for e in self.ejercicios.text.split(",") if e.strip()],
+            "dia": self.dia.text,
+            "objetivo": self.objetivo.text,
+            "grupos": [g.strip() for g in self.grupos.text.split(",") if g.strip()],
+            "calificaciones": [],
+            "suscripciones": [],
+            "reacciones": {},
+            "comentarios": []
+        }
 
         rutinas[nueva_id] = rutina
         save_rutinas(rutinas)
@@ -1273,7 +1353,11 @@ class VerRutinasScreen(Screen):
         self.layout.clear_widgets()
         self.layout.add_widget(Label(text="Rutinas Disponibles"))
         rutinas = load_rutinas()
+        user = load_users().get(self.manager.current_user, {})
+        obj = user.get("objetivo")
         for rid, rutina in rutinas.items():
+            if rutina.get("objetivo") and obj and rutina.get("objetivo") != obj:
+                continue
             promedio = round(sum(rutina['calificaciones'])/len(rutina['calificaciones']),1) if rutina['calificaciones'] else 0
             info = f"{rutina['titulo']} - {rutina['descripcion']}\nSuscriptores: {len(rutina['suscripciones'])}, Calificación: {promedio}/5"
             btn = Button(text=info)
@@ -1306,9 +1390,14 @@ class RutinasSuscritasScreen(Screen):
                 continue
             promedio = round(sum(rutina['calificaciones'])/len(rutina['calificaciones']),1) if rutina['calificaciones'] else 0
             info = f"{rutina['titulo']} - {rutina['descripcion']}\nSuscriptores: {len(rutina['suscripciones'])}, Calificación: {promedio}/5"
+            row = BoxLayout(size_hint_y=None, height=80)
             btn = Button(text=info)
             btn.bind(on_press=lambda x, id=rid: self.mostrar_rutina(id))
-            self.layout.add_widget(btn)
+            row.add_widget(btn)
+            btn_del = Button(text="Cancelar")
+            btn_del.bind(on_press=lambda x, id=rid: self.cancelar(id))
+            row.add_widget(btn_del)
+            self.layout.add_widget(row)
 
         btn_back = Button(text="Volver")
         btn_back.bind(on_press=lambda x: setattr(self.manager, "current", "inicio"))
@@ -1317,6 +1406,19 @@ class RutinasSuscritasScreen(Screen):
     def mostrar_rutina(self, rid):
         self.manager.current_rutina = rid
         self.manager.current = "detalle_rutina"
+
+    def cancelar(self, rid):
+        users = load_users()
+        rutinas = load_rutinas()
+        perfil = users.get(self.manager.current_user, {})
+        if rid in perfil.get("rutinas_suscritas", []):
+            perfil["rutinas_suscritas"].remove(rid)
+            rutina = rutinas.get(rid)
+            if rutina and self.manager.current_user in rutina.get("suscripciones", []):
+                rutina["suscripciones"].remove(self.manager.current_user)
+            save_rutinas(rutinas)
+            save_users(users)
+            self.on_enter()
 
 class PerfilScreen(Screen):
     def __init__(self, **kwargs):
