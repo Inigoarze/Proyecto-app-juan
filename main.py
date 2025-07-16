@@ -808,23 +808,66 @@ class BuscarUsuariosScreen(Screen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.layout = BoxLayout(orientation="vertical", spacing=10, padding=20)
-        self.add_widget(self.layout)
-
-    def on_enter(self):
-        self.layout.clear_widgets()
-        self.layout.add_widget(Label(text="Usuarios disponibles:"))
-        users = load_users()
-        current = self.manager.current_user
-
-        for username in users:
-            if username != current:
-                btn = Button(text=username)
-                btn.bind(on_press=lambda x, u=username: self.ver_perfil_ajeno(u))
-                self.layout.add_widget(btn)
-
+        self.search = TextInput(hint_text="Buscar usuario")
+        btn_search = Button(text="Buscar")
+        btn_search.bind(on_press=self.do_search)
+        self.result_area = BoxLayout(orientation="vertical", spacing=10, size_hint_y=None)
+        self.result_area.bind(minimum_height=self.result_area.setter('height'))
+        scroll = ScrollView()
+        scroll.add_widget(self.result_area)
+        self.layout.add_widget(self.search)
+        self.layout.add_widget(btn_search)
+        self.layout.add_widget(scroll)
         btn_back = Button(text="Volver")
         btn_back.bind(on_press=lambda x: setattr(self.manager, "current", "inicio"))
         self.layout.add_widget(btn_back)
+        self.add_widget(self.layout)
+
+    def on_enter(self):
+        self.do_search()
+
+    def do_search(self, *args):
+        query = self.search.text.lower() if hasattr(self, 'search') else ''
+        self.result_area.clear_widgets()
+        users = load_users()
+        current = self.manager.current_user
+        for username, data in users.items():
+            if username == current or query not in username.lower():
+                continue
+            row = BoxLayout(size_hint_y=None, height=40)
+            row.add_widget(Label(text=username))
+            btn_chat = Button(text="Chat", size_hint_x=None, width=60)
+            btn_chat.bind(on_press=lambda x, u=username: self.abrir_chat(u))
+            row.add_widget(btn_chat)
+            btn_perfil = Button(text="Perfil", size_hint_x=None, width=70)
+            btn_perfil.bind(on_press=lambda x, u=username: self.ver_perfil_ajeno(u))
+            row.add_widget(btn_perfil)
+            follow_text = "Seguir" if current not in data.get('seguidores', []) else "Dejar de seguir"
+            btn_follow = Button(text=follow_text, size_hint_x=None, width=120)
+            btn_follow.bind(on_press=lambda x, u=username: self.toggle_follow(u))
+            row.add_widget(btn_follow)
+            self.result_area.add_widget(row)
+
+    def toggle_follow(self, username):
+        users = load_users()
+        yo = self.manager.current_user
+        perfil_yo = users.get(yo, {})
+        perfil_otro = users.get(username, {})
+        if yo in perfil_otro.get('seguidores', []):
+            perfil_otro['seguidores'].remove(yo)
+            perfil_yo.get('seguidos', []).remove(username)
+        else:
+            perfil_otro.setdefault('seguidores', []).append(yo)
+            perfil_yo.setdefault('seguidos', []).append(username)
+            agregar_notificacion(username, f"{yo} comenzó a seguirte", tipo="seguimiento")
+        users[yo] = perfil_yo
+        users[username] = perfil_otro
+        save_users(users)
+        self.do_search()
+
+    def abrir_chat(self, username):
+        self.manager.chat_destino = username
+        self.manager.current = "chat"
 
     def ver_perfil_ajeno(self, username):
         self.manager.perfil_visto = username
@@ -851,9 +894,9 @@ class InicioScreen(Screen):
         layout.add_widget(self.menu)
         self.submenus = {}
 
-        self.add_menu_item("🏡 Inicio", [("Feed", "feed_social"), ("📊 Progreso", "feed_progreso"), ("Perfil", "perfil")])
-        self.add_menu_item("💬 Mensajes", [("Chats", "lista_chats")])
-        self.add_menu_item("📢 Notificaciones", [("Ver", "notificaciones")])
+        self.add_menu_item("👥 Comunidad", [("Feed", "feed_social"), ("📊 Progreso", "feed_progreso"), ("Perfil", "perfil")])
+        self.add_menu_item("💬 Chats", [("Chats", "lista_chats"), ("Buscar", "buscar_usuarios")])
+        self.add_menu_item("🔔 Notificaciones", [("Ver", "notificaciones")])
         self.add_menu_item("🍽️ Dietas", [("Ver", "ver_dietas"), ("Suscritas", "dietas_suscritas"), ("Publicar", "publicar_dieta"), ("Ingredientes", "libreria_ingredientes")])
         self.add_menu_item("🏋️ Rutinas", [("Ver", "ver_rutinas"), ("Suscritas", "rutinas_suscritas"), ("Publicar", "publicar_rutina")])
 
