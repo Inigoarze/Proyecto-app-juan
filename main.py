@@ -766,30 +766,32 @@ class InicioScreen(Screen):
         super().__init__(**kwargs)
         self.label = Label(text="", font_size=18)
         layout = BoxLayout(orientation="vertical", spacing=10, padding=20)
-        layout.add_widget(self.label)
 
-        botones = [("Notificaciones", "notificaciones"),
-            ("Mensajes", "lista_chats"),
-            ("Feed Social", "feed_social"),
-            ("Feed de Progreso", "feed_progreso"),
-            ("Publicar Dieta", "publicar_dieta"),
-            ("Ver Dietas", "ver_dietas"),
-            ("Buscar Usuarios", "buscar_usuarios"),
-            ("Ver Perfil", "perfil"),
-            ("Ver Entrenamiento", "entrenamiento"),
-            ("Ver Dieta", "dieta"),
-            ("Registrar Progreso", "progreso"),
-            ("Ver Historial", "historial"),
-            ("Publicar Rutina", "publicar_rutina"),
-            ("Ver Rutinas", "ver_rutinas")
+        top_bar = BoxLayout(size_hint_y=None, height=40)
+        top_bar.add_widget(self.label)
+        btn_notif = Button(text="🔔", size_hint_x=None, width=40)
+        btn_notif.bind(on_press=lambda x: setattr(self.manager, "current", "notificaciones"))
+        btn_msg = Button(text="✉️", size_hint_x=None, width=40)
+        btn_msg.bind(on_press=lambda x: setattr(self.manager, "current", "lista_chats"))
+        top_bar.add_widget(btn_notif)
+        top_bar.add_widget(btn_msg)
+        layout.add_widget(top_bar)
+
+        nav = BoxLayout()
+        items = [
+            ("🏠\nInicio", "feed_social"),
+            ("🥗\nDietas", "ver_dietas"),
+            ("💪\nRutinas", "ver_rutinas"),
+            ("📈\nProgreso", "feed_progreso"),
+            ("👤\nPerfil", "perfil"),
         ]
-
-        for texto, destino in botones:
+        for texto, destino in items:
             btn = Button(text=texto)
             btn.bind(on_press=lambda x, dest=destino: setattr(self.manager, "current", dest))
-            layout.add_widget(btn)
+            nav.add_widget(btn)
+        layout.add_widget(nav)
 
-        btn_logout = Button(text="Cerrar sesión")
+        btn_logout = Button(text="Cerrar sesión", size_hint_y=None, height=40)
         btn_logout.bind(on_press=self.logout)
         layout.add_widget(btn_logout)
 
