@@ -773,6 +773,7 @@ class InicioScreen(Screen):
         super().__init__(**kwargs)
         self.label = Label(text="", font_size=18)
         layout = BoxLayout(orientation="vertical", spacing=10, padding=20)
+
         layout.add_widget(self.label)
 
         botones = [
@@ -795,6 +796,7 @@ class InicioScreen(Screen):
         layout.add_widget(btn_logout)
 
         self.add_widget(layout)
+
 
     def on_enter(self):
         perfil = load_users().get(self.manager.current_user, {})
