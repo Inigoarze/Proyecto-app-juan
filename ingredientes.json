@@ -1,0 +1,20 @@
+{
+    "pollo": {
+        "calorias": 200,
+        "proteinas": 30,
+        "carbohidratos": 0,
+        "grasas": 5
+    },
+    "arroz": {
+        "calorias": 130,
+        "proteinas": 2.7,
+        "carbohidratos": 28,
+        "grasas": 0.3
+    },
+    "manzana": {
+        "calorias": 52,
+        "proteinas": 0.3,
+        "carbohidratos": 14,
+        "grasas": 0.2
+    }
+}

@@ -28,6 +28,7 @@ RUTINAS_FILE = "rutinas.json"
 PROGRESO_FILE = "progreso.json"
 DIETAS_FILE = "dietas.json"
 CHATS_FILE = "chats.json"
+INGREDIENTES_FILE = "ingredientes.json"
 
 # Carga estilos globales y configura color de fondo
 Builder.load_file("style.kv")
@@ -96,6 +97,12 @@ def load_rutinas():
 def save_rutinas(data):
     save_json(RUTINAS_FILE, data)
 
+def load_ingredientes():
+    return load_json(INGREDIENTES_FILE)
+
+def save_ingredientes(data):
+    save_json(INGREDIENTES_FILE, data)
+
 def agregar_notificacion(usuario, texto, tipo="general"):
     users = load_users()
     if usuario in users:
@@ -136,6 +143,16 @@ class ListaChatsScreen(Screen):
             btn.bind(on_press=lambda x, u=otro: self.abrir_chat(u))
             self.layout.add_widget(btn)
 
+        users = load_users()
+        seguidos = users.get(actual, {}).get("seguidos", [])
+        if seguidos:
+            self.layout.add_widget(Label(text="Iniciar chat con seguidor:"))
+            sp = Spinner(text="Elegir", values=seguidos)
+            sp.bind(text=self.nuevo_chat)
+            self.layout.add_widget(sp)
+        else:
+            self.layout.add_widget(Label(text="No sigues a nadie para chatear."))
+
         btn_back = Button(text="Volver")
         btn_back.bind(on_press=lambda x: setattr(self.manager, "current", "inicio"))
         self.layout.add_widget(btn_back)
@@ -143,6 +160,11 @@ class ListaChatsScreen(Screen):
     def abrir_chat(self, destinatario):
         self.manager.chat_destino = destinatario
         self.manager.current = "chat"
+
+    def nuevo_chat(self, spinner, texto):
+        if texto:
+            self.abrir_chat(texto)
+            spinner.text = "Elegir"
 
 
 
@@ -373,6 +395,9 @@ class ProgresoScreen(Screen):
         data[user] = perfil
         save_users(data)
         self.msg.text = "Progreso guardado correctamente"
+
+        for seg in perfil.get("seguidores", []):
+            agregar_notificacion(seg, f"{user} registró nuevo progreso", tipo="progreso")
 
 
         data = load_progreso()
@@ -789,7 +814,7 @@ class InicioScreen(Screen):
         self.add_menu_item("🏡 Inicio", [("Feed", "feed_social"), ("📊 Progreso", "feed_progreso"), ("Perfil", "perfil")])
         self.add_menu_item("💬 Mensajes", [("Chats", "lista_chats")])
         self.add_menu_item("📢 Notificaciones", [("Ver", "notificaciones")])
-        self.add_menu_item("🍽️ Dietas", [("Ver", "ver_dietas"), ("Suscritas", "dietas_suscritas"), ("Publicar", "publicar_dieta")])
+        self.add_menu_item("🍽️ Dietas", [("Ver", "ver_dietas"), ("Suscritas", "dietas_suscritas"), ("Publicar", "publicar_dieta"), ("Ingredientes", "libreria_ingredientes")])
         self.add_menu_item("🏋️ Rutinas", [("Ver", "ver_rutinas"), ("Suscritas", "rutinas_suscritas"), ("Publicar", "publicar_rutina")])
 
         btn_logout = Button(text="Cerrar sesión", size_hint_y=None, height=40)
@@ -833,14 +858,16 @@ class PublicarDietaScreen(Screen):
         super().__init__(**kwargs)
         self.titulo = TextInput(hint_text="Título de la dieta", multiline=False)
         self.descripcion = TextInput(hint_text="Descripción", multiline=False)
-        self.comidas = TextInput(hint_text="Comidas (una por línea)", multiline=True)
+        self.ingredientes = TextInput(hint_text="Ingredientes (uno por línea)", multiline=True)
+        self.pasos = TextInput(hint_text="Pasos de preparación (uno por línea)", multiline=True)
         self.msg = Label(text="")
 
         layout = BoxLayout(orientation="vertical", spacing=10, padding=20)
         layout.add_widget(Label(text="Publicar Dieta"))
         layout.add_widget(self.titulo)
         layout.add_widget(self.descripcion)
-        layout.add_widget(self.comidas)
+        layout.add_widget(self.ingredientes)
+        layout.add_widget(self.pasos)
         layout.add_widget(self.msg)
 
         btn_publicar = Button(text="Publicar")
@@ -856,11 +883,26 @@ class PublicarDietaScreen(Screen):
     def publicar(self, instance):
         dietas = load_dietas()
         nueva_id = f"dieta_{len(dietas)+1}"
+        ingr = [i.strip().lower() for i in self.ingredientes.text.strip().split("\n") if i.strip()]
+        pasos = [p.strip() for p in self.pasos.text.strip().split("\n") if p.strip()]
+        ing_data = load_ingredientes()
+        total_nutri = {
+            "calorias": 0,
+            "proteinas": 0,
+            "carbohidratos": 0,
+            "grasas": 0
+        }
+        for i in ingr:
+            info = ing_data.get(i, {})
+            for k in total_nutri:
+                total_nutri[k] += info.get(k, 0)
         dieta = {
             "creador": self.manager.current_user,
             "titulo": self.titulo.text,
             "descripcion": self.descripcion.text,
-            "comidas": self.comidas.text.strip().split("\n"),
+            "ingredientes": ingr,
+            "pasos": pasos,
+            "valor_nutricional": total_nutri,
             "calificaciones": [],
             "suscripciones": [],
             "reacciones": {},
@@ -872,8 +914,12 @@ class PublicarDietaScreen(Screen):
 
         # agregar al perfil del usuario
         users = load_users()
-        users[self.manager.current_user]["dietas_publicadas"].append(nueva_id)
+        perfil = users[self.manager.current_user]
+        perfil["dietas_publicadas"].append(nueva_id)
         save_users(users)
+
+        for seg in perfil.get("seguidores", []):
+            agregar_notificacion(seg, f"{self.manager.current_user} publicó una dieta", tipo="dieta")
 
         self.msg.text = "Dieta publicada con éxito."
 
@@ -890,7 +936,16 @@ class VerDietasScreen(Screen):
 
         for did, dieta in dietas.items():
             promedio = round(sum(dieta['calificaciones'])/len(dieta['calificaciones']), 1) if dieta['calificaciones'] else 0
-            info = f"{dieta['titulo']} - {dieta['descripcion']}\nSuscriptores: {len(dieta['suscripciones'])}, Calificación: {promedio}/5"
+            nutri = dieta.get('valor_nutricional', {})
+            kcal = nutri.get('calorias', 0)
+            p = nutri.get('proteinas', 0)
+            c = nutri.get('carbohidratos', 0)
+            g = nutri.get('grasas', 0)
+            info = (
+                f"{dieta['titulo']} - {dieta['descripcion']}\n"
+                f"Kcal: {kcal}, P: {p}g C: {c}g G: {g}g, "
+                f"Suscriptores: {len(dieta['suscripciones'])}, Calificación: {promedio}/5"
+            )
             btn = Button(text=info)
             btn.bind(on_press=lambda x, id=did: self.ver_dieta(id))
             self.layout.add_widget(btn)
@@ -920,7 +975,16 @@ class DietasSuscritasScreen(Screen):
             if not dieta:
                 continue
             promedio = round(sum(dieta['calificaciones'])/len(dieta['calificaciones']),1) if dieta['calificaciones'] else 0
-            info = f"{dieta['titulo']} - {dieta['descripcion']}\nSuscriptores: {len(dieta['suscripciones'])}, Calificación: {promedio}/5"
+            nutri = dieta.get('valor_nutricional', {})
+            kcal = nutri.get('calorias', 0)
+            p = nutri.get('proteinas', 0)
+            c = nutri.get('carbohidratos', 0)
+            g = nutri.get('grasas', 0)
+            info = (
+                f"{dieta['titulo']} - {dieta['descripcion']}\n"
+                f"Kcal: {kcal}, P: {p}g C: {c}g G: {g}g, "
+                f"Suscriptores: {len(dieta['suscripciones'])}, Calificación: {promedio}/5"
+            )
             btn = Button(text=info)
             btn.bind(on_press=lambda x, id=did: self.ver_dieta(id))
             self.layout.add_widget(btn)
@@ -932,6 +996,68 @@ class DietasSuscritasScreen(Screen):
     def ver_dieta(self, id_dieta):
         self.manager.current_dieta = id_dieta
         self.manager.current = "detalle_dieta"
+
+class LibreriaIngredientesScreen(Screen):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.layout = BoxLayout(orientation="vertical", spacing=10, padding=20)
+        self.add_widget(self.layout)
+
+    def on_enter(self):
+        self.layout.clear_widgets()
+        self.layout.add_widget(Label(text="Librería de Ingredientes"))
+
+        datos = load_ingredientes()
+        for nombre, val in datos.items():
+            texto = (
+                f"{nombre}: {val.get('calorias',0)} kcal, "
+                f"P: {val.get('proteinas',0)}g C: {val.get('carbohidratos',0)}g "
+                f"G: {val.get('grasas',0)}g"
+            )
+            self.layout.add_widget(Label(text=texto))
+
+        self.nombre = TextInput(hint_text="Nombre", multiline=False)
+        self.calorias = TextInput(hint_text="Calorías", multiline=False, input_filter='float')
+        self.proteinas = TextInput(hint_text="Proteínas", multiline=False, input_filter='float')
+        self.carbs = TextInput(hint_text="Carbohidratos", multiline=False, input_filter='float')
+        self.grasas = TextInput(hint_text="Grasas", multiline=False, input_filter='float')
+
+        btn_add = Button(text="Agregar/Actualizar")
+        btn_add.bind(on_press=self.agregar)
+
+        self.layout.add_widget(self.nombre)
+        self.layout.add_widget(self.calorias)
+        self.layout.add_widget(self.proteinas)
+        self.layout.add_widget(self.carbs)
+        self.layout.add_widget(self.grasas)
+        self.layout.add_widget(btn_add)
+
+        btn_back = Button(text="Volver")
+        btn_back.bind(on_press=lambda x: setattr(self.manager, 'current', 'inicio'))
+        self.layout.add_widget(btn_back)
+
+    def agregar(self, instance):
+        nombre = self.nombre.text.strip().lower()
+        cal = self.calorias.text.strip()
+        pro = self.proteinas.text.strip()
+        carb = self.carbs.text.strip()
+        gra = self.grasas.text.strip()
+        if not nombre or not cal:
+            return
+        data = load_ingredientes()
+        data[nombre] = {
+            "calorias": float(cal),
+            "proteinas": float(pro) if pro else 0,
+            "carbohidratos": float(carb) if carb else 0,
+            "grasas": float(gra) if gra else 0
+        }
+        save_ingredientes(data)
+        self.nombre.text = ""
+        self.calorias.text = ""
+        self.proteinas.text = ""
+        self.carbs.text = ""
+        self.grasas.text = ""
+        self.on_enter()
 
 class DetalleDietaScreen(Screen):
     def __init__(self, **kwargs):
@@ -999,8 +1125,24 @@ class DetalleDietaScreen(Screen):
 
     def on_enter(self):
         dieta = load_dietas().get(self.manager.current_dieta, {})
-        comidas = "\n".join(dieta.get("comidas", []))
-        self.label.text = f"{dieta.get('titulo', '')}\n{dieta.get('descripcion', '')}\n\nComidas:\n{comidas}"
+        info = [dieta.get('titulo', ''), dieta.get('descripcion', '')]
+        if dieta.get('ingredientes'):
+            info.append("\nIngredientes:")
+            info.extend(dieta.get('ingredientes', []))
+        if 'valor_nutricional' in dieta:
+            vn = dieta['valor_nutricional']
+            info.append(
+                f"Valor nutricional: {vn.get('calorias',0)} kcal, "
+                f"P: {vn.get('proteinas',0)}g C: {vn.get('carbohidratos',0)}g "
+                f"G: {vn.get('grasas',0)}g"
+            )
+        if dieta.get('pasos'):
+            info.append("\nPasos:")
+            info.extend(dieta.get('pasos', []))
+        if dieta.get('comidas'):
+            info.append("\nComidas:")
+            info.extend(dieta.get('comidas', []))
+        self.label.text = "\n".join(info)
         self.msg.text = ""
 
         reacciones = load_dietas()[self.manager.current_dieta].get("reacciones", {})
@@ -1023,17 +1165,21 @@ class DetalleDietaScreen(Screen):
         dietas = load_dietas()
         dieta = dietas[self.manager.current_dieta]
         user = self.manager.current_user
+        users = load_users()
+        perfil = users[user]
+        perfil.setdefault("dietas_suscritas", [])
         if user not in dieta['suscripciones']:
             dieta['suscripciones'].append(user)
-            save_dietas(dietas)
-            users = load_users()
-            users[user].setdefault("dietas_suscritas", [])
-            if self.manager.current_dieta not in users[user]["dietas_suscritas"]:
-                users[user]["dietas_suscritas"].append(self.manager.current_dieta)
-            save_users(users)
+            if self.manager.current_dieta not in perfil["dietas_suscritas"]:
+                perfil["dietas_suscritas"].append(self.manager.current_dieta)
             self.msg.text = "Te has suscrito a esta dieta."
         else:
-            self.msg.text = "Ya estás suscrito."
+            dieta['suscripciones'].remove(user)
+            if self.manager.current_dieta in perfil["dietas_suscritas"]:
+                perfil["dietas_suscritas"].remove(self.manager.current_dieta)
+            self.msg.text = "Se canceló la suscripción."
+        save_dietas(dietas)
+        save_users(users)
 
     def calificar(self, instance):
         nota = int(self.spinner.text) if self.spinner.text.isdigit() else 0
@@ -1105,6 +1251,14 @@ class PublicarRutinaScreen(Screen):
 
         rutinas[nueva_id] = rutina
         save_rutinas(rutinas)
+        users = load_users()
+        perfil = users[self.manager.current_user]
+        perfil["rutinas_publicadas"].append(nueva_id)
+        save_users(users)
+
+        for seg in perfil.get("seguidores", []):
+            agregar_notificacion(seg, f"{self.manager.current_user} publicó una rutina", tipo="rutina")
+
         self.msg.text = "Rutina publicada con éxito."
         
         
@@ -1312,17 +1466,21 @@ class DetalleRutinaScreen(Screen):
         rutinas = load_rutinas()
         rutina = rutinas[self.manager.current_rutina]
         user = self.manager.current_user
+        users = load_users()
+        perfil = users[user]
+        perfil.setdefault("rutinas_suscritas", [])
         if user not in rutina['suscripciones']:
             rutina['suscripciones'].append(user)
-            save_rutinas(rutinas)
-            users = load_users()
-            users[user].setdefault("rutinas_suscritas", [])
-            if self.manager.current_rutina not in users[user]["rutinas_suscritas"]:
-                users[user]["rutinas_suscritas"].append(self.manager.current_rutina)
-            save_users(users)
+            if self.manager.current_rutina not in perfil["rutinas_suscritas"]:
+                perfil["rutinas_suscritas"].append(self.manager.current_rutina)
             self.msg.text = "Te has suscrito a esta rutina."
         else:
-            self.msg.text = "Ya estás suscrito."
+            rutina['suscripciones'].remove(user)
+            if self.manager.current_rutina in perfil["rutinas_suscritas"]:
+                perfil["rutinas_suscritas"].remove(self.manager.current_rutina)
+            self.msg.text = "Se canceló la suscripción."
+        save_rutinas(rutinas)
+        save_users(users)
 
     def calificar(self, instance):
         nota = int(self.spinner.text) if self.spinner.text.isdigit() else 0
@@ -1363,6 +1521,7 @@ class FitnessApp(App):
         sm.add_widget(VerDietasScreen(name="ver_dietas"))
         sm.add_widget(DetalleDietaScreen(name="detalle_dieta"))
         sm.add_widget(DietasSuscritasScreen(name="dietas_suscritas"))
+        sm.add_widget(LibreriaIngredientesScreen(name="libreria_ingredientes"))
         sm.add_widget(FeedProgresoScreen(name="feed_progreso"))
         sm.add_widget(FeedSocialScreen(name="feed_social"))
         sm.chat_destino = None
