@@ -34,16 +34,23 @@ Builder.load_file("style.kv")
 Window.clearcolor = (0.98, 0.98, 0.98, 1)
 Window.size = (400, 700)
 
+# Cache simple para evitar lecturas repetidas
+_CACHE = {}
 
 
-def load_json(path):
-    if os.path.exists(path):
-        with open(path, "r") as f:
-            return json.load(f)
-    return {}
+
+def load_json(path, force=False):
+    if force or path not in _CACHE:
+        if os.path.exists(path):
+            with open(path, "r") as f:
+                _CACHE[path] = json.load(f)
+        else:
+            _CACHE[path] = {}
+    return _CACHE[path]
 
 
 def save_json(path, data):
+    _CACHE[path] = data
     with open(path, "w") as f:
         json.dump(data, f, indent=4)
 
@@ -768,20 +775,14 @@ class InicioScreen(Screen):
         layout = BoxLayout(orientation="vertical", spacing=10, padding=20)
         layout.add_widget(self.label)
 
-        botones = [("Notificaciones", "notificaciones"),
+        botones = [
+            ("Feed", "feed_social"),
+            ("Rutinas", "ver_rutinas"),
+            ("Dietas", "ver_dietas"),
+            ("Progreso", "progreso"),
             ("Mensajes", "lista_chats"),
-            ("Feed Social", "feed_social"),
-            ("Feed de Progreso", "feed_progreso"),
-            ("Publicar Dieta", "publicar_dieta"),
-            ("Ver Dietas", "ver_dietas"),
-            ("Buscar Usuarios", "buscar_usuarios"),
-            ("Ver Perfil", "perfil"),
-            ("Ver Entrenamiento", "entrenamiento"),
-            ("Ver Dieta", "dieta"),
-            ("Registrar Progreso", "progreso"),
-            ("Ver Historial", "historial"),
-            ("Publicar Rutina", "publicar_rutina"),
-            ("Ver Rutinas", "ver_rutinas")
+            ("Notificaciones", "notificaciones"),
+            ("Perfil", "perfil")
         ]
 
         for texto, destino in botones:
@@ -1081,6 +1082,18 @@ class PerfilScreen(Screen):
         self.layout = BoxLayout(orientation="vertical", spacing=10, padding=20)
         self.layout.add_widget(Label(text="Tu Perfil"))
         self.layout.add_widget(self.label)
+
+        btn_publicar_rutina = Button(text="Publicar Rutina")
+        btn_publicar_rutina.bind(on_press=lambda x: setattr(self.manager, "current", "publicar_rutina"))
+        self.layout.add_widget(btn_publicar_rutina)
+
+        btn_publicar_dieta = Button(text="Publicar Dieta")
+        btn_publicar_dieta.bind(on_press=lambda x: setattr(self.manager, "current", "publicar_dieta"))
+        self.layout.add_widget(btn_publicar_dieta)
+
+        btn_buscar = Button(text="Buscar Usuarios")
+        btn_buscar.bind(on_press=lambda x: setattr(self.manager, "current", "buscar_usuarios"))
+        self.layout.add_widget(btn_buscar)
 
         btn_back = Button(text="Volver")
         btn_back.bind(on_press=lambda x: setattr(self.manager, "current", "inicio"))
