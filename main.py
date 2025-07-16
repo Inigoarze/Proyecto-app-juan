@@ -809,22 +809,41 @@ class BuscarUsuariosScreen(Screen):
         super().__init__(**kwargs)
         self.layout = BoxLayout(orientation="vertical", spacing=10, padding=20)
         self.add_widget(self.layout)
+        self.search = TextInput(hint_text="Buscar usuario")
+        self.search.bind(text=lambda *x: self.actualizar_lista())
+        self.resultados = BoxLayout(orientation="vertical", size_hint_y=None)
+        self.resultados.bind(minimum_height=self.resultados.setter("height"))
+        scroll = ScrollView()
+        scroll.add_widget(self.resultados)
+        self.layout.add_widget(self.search)
+        self.layout.add_widget(scroll)
+        self.btn_back = Button(text="Volver")
+        self.btn_back.bind(on_press=lambda x: setattr(self.manager, "current", "inicio"))
+        self.layout.add_widget(self.btn_back)
 
     def on_enter(self):
-        self.layout.clear_widgets()
-        self.layout.add_widget(Label(text="Usuarios disponibles:"))
+        self.search.text = ""
+        self.actualizar_lista()
+
+    def actualizar_lista(self, *args):
+        self.resultados.clear_widgets()
         users = load_users()
         current = self.manager.current_user
-
+        term = self.search.text.lower()
         for username in users:
-            if username != current:
+            if username != current and term in username.lower():
+                row = BoxLayout(size_hint_y=None, height=40)
                 btn = Button(text=username)
                 btn.bind(on_press=lambda x, u=username: self.ver_perfil_ajeno(u))
-                self.layout.add_widget(btn)
+                btn_chat = Button(text="Chat", size_hint_x=None, width=80)
+                btn_chat.bind(on_press=lambda x, u=username: self.iniciar_chat(u))
+                row.add_widget(btn)
+                row.add_widget(btn_chat)
+                self.resultados.add_widget(row)
 
-        btn_back = Button(text="Volver")
-        btn_back.bind(on_press=lambda x: setattr(self.manager, "current", "inicio"))
-        self.layout.add_widget(btn_back)
+    def iniciar_chat(self, username):
+        self.manager.chat_destino = username
+        self.manager.current = "chat"
 
     def ver_perfil_ajeno(self, username):
         self.manager.perfil_visto = username
@@ -851,11 +870,12 @@ class InicioScreen(Screen):
         layout.add_widget(self.menu)
         self.submenus = {}
 
-        self.add_menu_item("🏡 Inicio", [("Feed", "feed_social"), ("📊 Progreso", "feed_progreso"), ("Perfil", "perfil")])
-        self.add_menu_item("💬 Mensajes", [("Chats", "lista_chats")])
-        self.add_menu_item("📢 Notificaciones", [("Ver", "notificaciones")])
-        self.add_menu_item("🍽️ Dietas", [("Ver", "ver_dietas"), ("Suscritas", "dietas_suscritas"), ("Publicar", "publicar_dieta"), ("Ingredientes", "libreria_ingredientes")])
-        self.add_menu_item("🏋️ Rutinas", [("Ver", "ver_rutinas"), ("Suscritas", "rutinas_suscritas"), ("Publicar", "publicar_rutina")])
+        self.add_menu_item("🏠 Social", [("Actividad", "feed_social"), ("Progreso", "feed_progreso"), ("Mi perfil", "perfil")])
+        self.add_menu_item("💬 Chats", [("Mis chats", "lista_chats")])
+        self.add_menu_item("🔔 Notificaciones", [("Todas", "notificaciones")])
+        self.add_menu_item("🍽️ Dietas", [("Explorar", "ver_dietas"), ("Suscripciones", "dietas_suscritas"), ("Publicar nueva", "publicar_dieta"), ("Librería", "libreria_ingredientes")])
+        self.add_menu_item("🏋️ Rutinas", [("Explorar", "ver_rutinas"), ("Suscripciones", "rutinas_suscritas"), ("Publicar nueva", "publicar_rutina")])
+        self.add_menu_item("👥 Usuarios", [("Buscar", "buscar_usuarios")])
 
         btn_logout = Button(text="Cerrar sesión", size_hint_y=None, height=40)
         btn_logout.bind(on_press=self.logout)
