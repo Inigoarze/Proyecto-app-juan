@@ -34,16 +34,23 @@ Builder.load_file("style.kv")
 Window.clearcolor = (0.98, 0.98, 0.98, 1)
 Window.size = (400, 700)
 
+# Cache simple para evitar lecturas repetidas
+_CACHE = {}
 
 
-def load_json(path):
-    if os.path.exists(path):
-        with open(path, "r") as f:
-            return json.load(f)
-    return {}
+
+def load_json(path, force=False):
+    if force or path not in _CACHE:
+        if os.path.exists(path):
+            with open(path, "r") as f:
+                _CACHE[path] = json.load(f)
+        else:
+            _CACHE[path] = {}
+    return _CACHE[path]
 
 
 def save_json(path, data):
+    _CACHE[path] = data
     with open(path, "w") as f:
         json.dump(data, f, indent=4)
 
@@ -767,35 +774,29 @@ class InicioScreen(Screen):
         self.label = Label(text="", font_size=18)
         layout = BoxLayout(orientation="vertical", spacing=10, padding=20)
 
-        top_bar = BoxLayout(size_hint_y=None, height=40)
-        top_bar.add_widget(self.label)
-        btn_notif = Button(text="🔔", size_hint_x=None, width=40)
-        btn_notif.bind(on_press=lambda x: setattr(self.manager, "current", "notificaciones"))
-        btn_msg = Button(text="✉️", size_hint_x=None, width=40)
-        btn_msg.bind(on_press=lambda x: setattr(self.manager, "current", "lista_chats"))
-        top_bar.add_widget(btn_notif)
-        top_bar.add_widget(btn_msg)
-        layout.add_widget(top_bar)
+        layout.add_widget(self.label)
 
-        nav = BoxLayout()
-        items = [
-            ("🏠\nInicio", "feed_social"),
-            ("🥗\nDietas", "ver_dietas"),
-            ("💪\nRutinas", "ver_rutinas"),
-            ("📈\nProgreso", "feed_progreso"),
-            ("👤\nPerfil", "perfil"),
+        botones = [
+            ("Feed", "feed_social"),
+            ("Rutinas", "ver_rutinas"),
+            ("Dietas", "ver_dietas"),
+            ("Progreso", "progreso"),
+            ("Mensajes", "lista_chats"),
+            ("Notificaciones", "notificaciones"),
+            ("Perfil", "perfil")
         ]
-        for texto, destino in items:
+
+        for texto, destino in botones:
             btn = Button(text=texto)
             btn.bind(on_press=lambda x, dest=destino: setattr(self.manager, "current", dest))
-            nav.add_widget(btn)
-        layout.add_widget(nav)
+            layout.add_widget(btn)
 
-        btn_logout = Button(text="Cerrar sesión", size_hint_y=None, height=40)
+        btn_logout = Button(text="Cerrar sesión")
         btn_logout.bind(on_press=self.logout)
         layout.add_widget(btn_logout)
 
         self.add_widget(layout)
+
 
     def on_enter(self):
         perfil = load_users().get(self.manager.current_user, {})
@@ -1083,6 +1084,18 @@ class PerfilScreen(Screen):
         self.layout = BoxLayout(orientation="vertical", spacing=10, padding=20)
         self.layout.add_widget(Label(text="Tu Perfil"))
         self.layout.add_widget(self.label)
+
+        btn_publicar_rutina = Button(text="Publicar Rutina")
+        btn_publicar_rutina.bind(on_press=lambda x: setattr(self.manager, "current", "publicar_rutina"))
+        self.layout.add_widget(btn_publicar_rutina)
+
+        btn_publicar_dieta = Button(text="Publicar Dieta")
+        btn_publicar_dieta.bind(on_press=lambda x: setattr(self.manager, "current", "publicar_dieta"))
+        self.layout.add_widget(btn_publicar_dieta)
+
+        btn_buscar = Button(text="Buscar Usuarios")
+        btn_buscar.bind(on_press=lambda x: setattr(self.manager, "current", "buscar_usuarios"))
+        self.layout.add_widget(btn_buscar)
 
         btn_back = Button(text="Volver")
         btn_back.bind(on_press=lambda x: setattr(self.manager, "current", "inicio"))
