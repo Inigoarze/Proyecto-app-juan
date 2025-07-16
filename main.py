@@ -72,6 +72,8 @@ def load_users():
         u.setdefault("progreso", [])
         u.setdefault("seguidores", [])
         u.setdefault("seguidos", [])
+        u.setdefault("dietas_suscritas", [])
+        u.setdefault("rutinas_suscritas", [])
     return users
 
 
@@ -367,6 +369,7 @@ class ProgresoScreen(Screen):
         }
 
         perfil["progreso"].append(nuevo_registro)
+        perfil["peso"] = float(peso)
         data[user] = perfil
         save_users(data)
         self.msg.text = "Progreso guardado correctamente"
@@ -625,6 +628,8 @@ class RegisterScreen(Screen):
         data["seguidores"] = []
         data["seguidos"] = []
         data["notificaciones"] = []
+        data["dietas_suscritas"] = []
+        data["rutinas_suscritas"] = []
 
 
         users[usuario] = data
@@ -769,33 +774,51 @@ class InicioScreen(Screen):
 
         top_bar = BoxLayout(size_hint_y=None, height=40)
         top_bar.add_widget(self.label)
-        btn_notif = Button(text="🔔", size_hint_x=None, width=40)
+        btn_notif = Button(text="🛎️", size_hint_x=None, width=40)
         btn_notif.bind(on_press=lambda x: setattr(self.manager, "current", "notificaciones"))
-        btn_msg = Button(text="✉️", size_hint_x=None, width=40)
+        btn_msg = Button(text="💬", size_hint_x=None, width=40)
         btn_msg.bind(on_press=lambda x: setattr(self.manager, "current", "lista_chats"))
         top_bar.add_widget(btn_notif)
         top_bar.add_widget(btn_msg)
         layout.add_widget(top_bar)
 
-        nav = BoxLayout()
-        items = [
-            ("🏠\nInicio", "feed_social"),
-            ("🥗\nDietas", "ver_dietas"),
-            ("💪\nRutinas", "ver_rutinas"),
-            ("📈\nProgreso", "feed_progreso"),
-            ("👤\nPerfil", "perfil"),
-        ]
-        for texto, destino in items:
-            btn = Button(text=texto)
-            btn.bind(on_press=lambda x, dest=destino: setattr(self.manager, "current", dest))
-            nav.add_widget(btn)
-        layout.add_widget(nav)
+        self.menu = BoxLayout(orientation="vertical", spacing=5)
+        layout.add_widget(self.menu)
+        self.submenus = {}
+
+        self.add_menu_item("🏡 Inicio", [("Feed", "feed_social"), ("📊 Progreso", "feed_progreso"), ("Perfil", "perfil")])
+        self.add_menu_item("💬 Mensajes", [("Chats", "lista_chats")])
+        self.add_menu_item("📢 Notificaciones", [("Ver", "notificaciones")])
+        self.add_menu_item("🍽️ Dietas", [("Ver", "ver_dietas"), ("Suscritas", "dietas_suscritas"), ("Publicar", "publicar_dieta")])
+        self.add_menu_item("🏋️ Rutinas", [("Ver", "ver_rutinas"), ("Suscritas", "rutinas_suscritas"), ("Publicar", "publicar_rutina")])
 
         btn_logout = Button(text="Cerrar sesión", size_hint_y=None, height=40)
         btn_logout.bind(on_press=self.logout)
         layout.add_widget(btn_logout)
 
         self.add_widget(layout)
+
+    def add_menu_item(self, text, subitems):
+        header = Button(text=text, size_hint_y=None, height=40)
+        header.bind(on_press=lambda x, k=text: self.toggle_submenu(k))
+        self.menu.add_widget(header)
+        submenu = BoxLayout(orientation="vertical", size_hint_y=None, height=0, opacity=0)
+        for label, dest in subitems:
+            btn = Button(text=label, size_hint_y=None, height=40)
+            btn.bind(on_press=lambda x, d=dest: setattr(self.manager, "current", d))
+            submenu.add_widget(btn)
+        submenu.cached_height = 40 * len(subitems)
+        self.submenus[text] = submenu
+        self.menu.add_widget(submenu)
+
+    def toggle_submenu(self, key):
+        sub = self.submenus.get(key)
+        if sub.height == 0:
+            sub.height = sub.cached_height
+            sub.opacity = 1
+        else:
+            sub.height = 0
+            sub.opacity = 0
 
     def on_enter(self):
         perfil = load_users().get(self.manager.current_user, {})
@@ -867,6 +890,36 @@ class VerDietasScreen(Screen):
 
         for did, dieta in dietas.items():
             promedio = round(sum(dieta['calificaciones'])/len(dieta['calificaciones']), 1) if dieta['calificaciones'] else 0
+            info = f"{dieta['titulo']} - {dieta['descripcion']}\nSuscriptores: {len(dieta['suscripciones'])}, Calificación: {promedio}/5"
+            btn = Button(text=info)
+            btn.bind(on_press=lambda x, id=did: self.ver_dieta(id))
+            self.layout.add_widget(btn)
+
+        btn_back = Button(text="Volver")
+        btn_back.bind(on_press=lambda x: setattr(self.manager, "current", "inicio"))
+        self.layout.add_widget(btn_back)
+
+    def ver_dieta(self, id_dieta):
+        self.manager.current_dieta = id_dieta
+        self.manager.current = "detalle_dieta"
+
+class DietasSuscritasScreen(Screen):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.layout = BoxLayout(orientation="vertical", spacing=10, padding=20)
+        self.add_widget(self.layout)
+
+    def on_enter(self):
+        self.layout.clear_widgets()
+        self.layout.add_widget(Label(text="Dietas Suscritas"))
+        users = load_users()
+        dietas = load_dietas()
+        perfil = users.get(self.manager.current_user, {})
+        for did in perfil.get("dietas_suscritas", []):
+            dieta = dietas.get(did)
+            if not dieta:
+                continue
+            promedio = round(sum(dieta['calificaciones'])/len(dieta['calificaciones']),1) if dieta['calificaciones'] else 0
             info = f"{dieta['titulo']} - {dieta['descripcion']}\nSuscriptores: {len(dieta['suscripciones'])}, Calificación: {promedio}/5"
             btn = Button(text=info)
             btn.bind(on_press=lambda x, id=did: self.ver_dieta(id))
@@ -973,6 +1026,11 @@ class DetalleDietaScreen(Screen):
         if user not in dieta['suscripciones']:
             dieta['suscripciones'].append(user)
             save_dietas(dietas)
+            users = load_users()
+            users[user].setdefault("dietas_suscritas", [])
+            if self.manager.current_dieta not in users[user]["dietas_suscritas"]:
+                users[user]["dietas_suscritas"].append(self.manager.current_dieta)
+            save_users(users)
             self.msg.text = "Te has suscrito a esta dieta."
         else:
             self.msg.text = "Ya estás suscrito."
@@ -1076,6 +1134,36 @@ class VerRutinasScreen(Screen):
         self.manager.current_rutina = rutina_id
         self.manager.current = "detalle_rutina"
 
+class RutinasSuscritasScreen(Screen):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.layout = BoxLayout(orientation="vertical", spacing=10, padding=20)
+        self.add_widget(self.layout)
+
+    def on_enter(self):
+        self.layout.clear_widgets()
+        self.layout.add_widget(Label(text="Rutinas Suscritas"))
+        users = load_users()
+        rutinas = load_rutinas()
+        perfil = users.get(self.manager.current_user, {})
+        for rid in perfil.get("rutinas_suscritas", []):
+            rutina = rutinas.get(rid)
+            if not rutina:
+                continue
+            promedio = round(sum(rutina['calificaciones'])/len(rutina['calificaciones']),1) if rutina['calificaciones'] else 0
+            info = f"{rutina['titulo']} - {rutina['descripcion']}\nSuscriptores: {len(rutina['suscripciones'])}, Calificación: {promedio}/5"
+            btn = Button(text=info)
+            btn.bind(on_press=lambda x, id=rid: self.mostrar_rutina(id))
+            self.layout.add_widget(btn)
+
+        btn_back = Button(text="Volver")
+        btn_back.bind(on_press=lambda x: setattr(self.manager, "current", "inicio"))
+        self.layout.add_widget(btn_back)
+
+    def mostrar_rutina(self, rid):
+        self.manager.current_rutina = rid
+        self.manager.current = "detalle_rutina"
+
 class PerfilScreen(Screen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -1101,6 +1189,8 @@ class PerfilScreen(Screen):
             f"Restricciones: {perfil.get('restricciones', '')}",
             f"Rutinas publicadas: {len(perfil.get('rutinas_publicadas', []))}",
             f"Dietas publicadas: {len(perfil.get('dietas_publicadas', []))}",
+            f"Rutinas suscritas: {len(perfil.get('rutinas_suscritas', []))}",
+            f"Dietas suscritas: {len(perfil.get('dietas_suscritas', []))}",
             f"Seguidores: {len(perfil.get('seguidores', []))}",
             f"Seguidos: {len(perfil.get('seguidos', []))}"
         ]
@@ -1225,6 +1315,11 @@ class DetalleRutinaScreen(Screen):
         if user not in rutina['suscripciones']:
             rutina['suscripciones'].append(user)
             save_rutinas(rutinas)
+            users = load_users()
+            users[user].setdefault("rutinas_suscritas", [])
+            if self.manager.current_rutina not in users[user]["rutinas_suscritas"]:
+                users[user]["rutinas_suscritas"].append(self.manager.current_rutina)
+            save_users(users)
             self.msg.text = "Te has suscrito a esta rutina."
         else:
             self.msg.text = "Ya estás suscrito."
@@ -1252,6 +1347,7 @@ class FitnessApp(App):
         sm.add_widget(PublicarRutinaScreen(name="publicar_rutina"))
         sm.add_widget(VerRutinasScreen(name="ver_rutinas"))
         sm.add_widget(DetalleRutinaScreen(name="detalle_rutina"))
+        sm.add_widget(RutinasSuscritasScreen(name="rutinas_suscritas"))
         
         # Pantallas agregadas
         sm.add_widget(EntrenamientoScreen(name="entrenamiento"))
@@ -1266,6 +1362,7 @@ class FitnessApp(App):
         sm.add_widget(PublicarDietaScreen(name="publicar_dieta"))
         sm.add_widget(VerDietasScreen(name="ver_dietas"))
         sm.add_widget(DetalleDietaScreen(name="detalle_dieta"))
+        sm.add_widget(DietasSuscritasScreen(name="dietas_suscritas"))
         sm.add_widget(FeedProgresoScreen(name="feed_progreso"))
         sm.add_widget(FeedSocialScreen(name="feed_social"))
         sm.chat_destino = None
