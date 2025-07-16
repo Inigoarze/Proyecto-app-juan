@@ -895,10 +895,11 @@ class InicioScreen(Screen):
         self.submenus = {}
 
         self.add_menu_item("👥 Comunidad", [("Feed", "feed_social"), ("📊 Progreso", "feed_progreso"), ("Perfil", "perfil")])
-        self.add_menu_item("💬 Chats", [("Chats", "lista_chats"), ("Buscar", "buscar_usuarios")])
+        self.add_menu_item("💬 Chats", [("Chats", "lista_chats")])
         self.add_menu_item("🔔 Notificaciones", [("Ver", "notificaciones")])
-        self.add_menu_item("🍽️ Dietas", [("Ver", "ver_dietas"), ("Suscritas", "dietas_suscritas"), ("Publicar", "publicar_dieta"), ("Ingredientes", "libreria_ingredientes")])
-        self.add_menu_item("🏋️ Rutinas", [("Ver", "ver_rutinas"), ("Suscritas", "rutinas_suscritas"), ("Publicar", "publicar_rutina")])
+        self.add_menu_item("🍽️ Dietas", [("Ver dietas", "ver_dietas"), ("Publicar dieta", "publicar_dieta"), ("Mis dietas", "dietas_suscritas")])
+        self.add_menu_item("🏋️ Rutinas", [("Ver rutinas", "ver_rutinas"), ("Publicar rutina", "publicar_rutina"), ("Mis rutinas", "rutinas_suscritas")])
+        self.add_menu_item("🔍 Buscar usuarios", [("Buscar", "buscar_usuarios")])
 
         btn_logout = Button(text="Cerrar sesión", size_hint_y=None, height=40)
         btn_logout.bind(on_press=self.logout)
